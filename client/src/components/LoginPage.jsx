@@ -1,0 +1,102 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import toast from 'react-hot-toast';
+import { FiShield, FiMail, FiLock, FiLogIn, FiZap } from 'react-icons/fi';
+
+export default function LoginPage() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const { login, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+
+  if (isAuthenticated) {
+    navigate('/dashboard', { replace: true });
+    return null;
+  }
+
+  const handleAutoFill = () => {
+    setEmail('admin@ada-remediator.com');
+    setPassword('Admin123!');
+    toast.success('Demo credentials filled!');
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!email || !password) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      await login(email, password);
+      toast.success('Welcome back!');
+      navigate('/dashboard');
+    } catch (err) {
+      toast.error(err.response?.data?.error || err.response?.data?.message || 'Login failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="login-page">
+      <div className="login-card">
+        <div className="login-header">
+          <div className="login-logo">
+            <FiShield size={48} />
+          </div>
+          <h1>ADA Remediator</h1>
+          <p className="login-subtitle">AI-Powered Website Accessibility Platform</p>
+        </div>
+
+        <form className="login-form" onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label htmlFor="email">
+              <FiMail size={16} />
+              <span>Email Address</span>
+            </label>
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Enter your email"
+              autoComplete="email"
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="password">
+              <FiLock size={16} />
+              <span>Password</span>
+            </label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter your password"
+              autoComplete="current-password"
+            />
+          </div>
+
+          <button type="submit" className="btn btn-primary login-btn" disabled={isLoading}>
+            <FiLogIn size={18} />
+            {isLoading ? 'Signing in...' : 'Sign In'}
+          </button>
+
+          <button type="button" className="btn btn-outline auto-fill-btn" onClick={handleAutoFill}>
+            <FiZap size={18} />
+            Auto-Fill Demo Credentials
+          </button>
+        </form>
+
+        <div className="login-footer">
+          <p>Powered by AI for WCAG 2.1 AA/AAA Compliance</p>
+        </div>
+      </div>
+    </div>
+  );
+}

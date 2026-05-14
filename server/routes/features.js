@@ -1,32 +1,58 @@
 const express = require('express');
 const { pool } = require('../db');
+const auth = require('../middleware/auth');
 
 const router = express.Router();
 
+// All feature routes require authentication
+router.use(auth);
+
 // Factory function to create CRUD routes for a feature table
-function createFeatureRoutes(tableName, routePath) {
+function createFeatureRoutes(tableName) {
   const featureRouter = express.Router();
 
-  // GET /api/:routePath - list all items
+  // GET /api/:routePath?page=1&limit=20 - list user's items with pagination
   featureRouter.get('/', async (req, res) => {
     try {
-      const result = await pool.query(
-        `SELECT * FROM ${tableName} ORDER BY created_at DESC`
+      const userId = req.user.id;
+      const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
+      const offset = (page - 1) * limit;
+
+      const countResult = await pool.query(
+        `SELECT COUNT(*) as count FROM ${tableName} WHERE user_id = $1`,
+        [userId]
       );
-      res.json(result.rows);
+      const total = parseInt(countResult.rows[0].count, 10);
+
+      const result = await pool.query(
+        `SELECT * FROM ${tableName} WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
+        [userId, limit, offset]
+      );
+
+      res.json({
+        data: result.rows,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+        },
+      });
     } catch (err) {
       console.error(`Error fetching ${tableName}:`, err.message);
       res.status(500).json({ error: `Failed to fetch ${tableName}.` });
     }
   });
 
-  // GET /api/:routePath/:id - get single item
+  // GET /api/:routePath/:id - get single item (user-scoped)
   featureRouter.get('/:id', async (req, res) => {
     try {
       const { id } = req.params;
+      const userId = req.user.id;
       const result = await pool.query(
-        `SELECT * FROM ${tableName} WHERE id = $1`,
-        [id]
+        `SELECT * FROM ${tableName} WHERE id = $1 AND user_id = $2`,
+        [id, userId]
       );
       if (result.rows.length === 0) {
         return res.status(404).json({ error: 'Item not found.' });
@@ -38,16 +64,39 @@ function createFeatureRoutes(tableName, routePath) {
     }
   });
 
-  // POST /api/:routePath - create new item
+  // POST /api/:routePath - create new item (scoped to user)
   featureRouter.post('/', async (req, res) => {
     try {
       const { title, description, url, status } = req.body;
-      if (!title) {
+      const userId = req.user.id;
+
+      // Validation
+      if (!title || typeof title !== 'string' || title.trim().length === 0) {
         return res.status(400).json({ error: 'Title is required.' });
       }
+      if (title.trim().length > 255) {
+        return res.status(400).json({ error: 'Title must be 255 characters or fewer.' });
+      }
+      if (description && typeof description !== 'string') {
+        return res.status(400).json({ error: 'Description must be a string.' });
+      }
+      if (description && description.length > 10000) {
+        return res.status(400).json({ error: 'Description must be 10,000 characters or fewer.' });
+      }
+      if (url && typeof url !== 'string') {
+        return res.status(400).json({ error: 'URL must be a string.' });
+      }
+      if (url && url.length > 500) {
+        return res.status(400).json({ error: 'URL must be 500 characters or fewer.' });
+      }
+      const validStatuses = ['pending', 'in_progress', 'completed', 'failed', 'scanning'];
+      if (status && !validStatuses.includes(status)) {
+        return res.status(400).json({ error: `Status must be one of: ${validStatuses.join(', ')}` });
+      }
+
       const result = await pool.query(
-        `INSERT INTO ${tableName} (title, description, url, status) VALUES ($1, $2, $3, $4) RETURNING *`,
-        [title, description || null, url || null, status || 'pending']
+        `INSERT INTO ${tableName} (user_id, title, description, url, status) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+        [userId, title.trim(), description || null, url || null, status || 'pending']
       );
       res.status(201).json(result.rows[0]);
     } catch (err) {
@@ -56,11 +105,30 @@ function createFeatureRoutes(tableName, routePath) {
     }
   });
 
-  // PUT /api/:routePath/:id - update item
+  // PUT /api/:routePath/:id - update item (user-scoped)
   featureRouter.put('/:id', async (req, res) => {
     try {
       const { id } = req.params;
+      const userId = req.user.id;
       const { title, description, url, status, ai_result } = req.body;
+
+      // Validation
+      if (title !== undefined && (typeof title !== 'string' || title.trim().length === 0)) {
+        return res.status(400).json({ error: 'Title must be a non-empty string.' });
+      }
+      if (title && title.trim().length > 255) {
+        return res.status(400).json({ error: 'Title must be 255 characters or fewer.' });
+      }
+      if (description !== undefined && description !== null && description.length > 10000) {
+        return res.status(400).json({ error: 'Description must be 10,000 characters or fewer.' });
+      }
+      if (url !== undefined && url !== null && url.length > 500) {
+        return res.status(400).json({ error: 'URL must be 500 characters or fewer.' });
+      }
+      const validStatuses = ['pending', 'in_progress', 'completed', 'failed', 'scanning'];
+      if (status && !validStatuses.includes(status)) {
+        return res.status(400).json({ error: `Status must be one of: ${validStatuses.join(', ')}` });
+      }
 
       const result = await pool.query(
         `UPDATE ${tableName}
@@ -70,9 +138,9 @@ function createFeatureRoutes(tableName, routePath) {
              status = COALESCE($4, status),
              ai_result = COALESCE($5, ai_result),
              updated_at = NOW()
-         WHERE id = $6
+         WHERE id = $6 AND user_id = $7
          RETURNING *`,
-        [title, description, url, status, ai_result ? JSON.stringify(ai_result) : null, id]
+        [title, description, url, status, ai_result ? JSON.stringify(ai_result) : null, id, userId]
       );
 
       if (result.rows.length === 0) {
@@ -85,13 +153,14 @@ function createFeatureRoutes(tableName, routePath) {
     }
   });
 
-  // DELETE /api/:routePath/:id - delete item
+  // DELETE /api/:routePath/:id - delete item (user-scoped)
   featureRouter.delete('/:id', async (req, res) => {
     try {
       const { id } = req.params;
+      const userId = req.user.id;
       const result = await pool.query(
-        `DELETE FROM ${tableName} WHERE id = $1 RETURNING *`,
-        [id]
+        `DELETE FROM ${tableName} WHERE id = $1 AND user_id = $2 RETURNING *`,
+        [id, userId]
       );
       if (result.rows.length === 0) {
         return res.status(404).json({ error: 'Item not found.' });
@@ -125,9 +194,10 @@ const featureMappings = [
   { route: 'accessibility-policies', table: 'accessibility_policies' },
 ];
 
-// Counts endpoint for dashboard
+// Counts endpoint for dashboard (user-scoped, real score)
 router.get('/features/counts', async (req, res) => {
   try {
+    const userId = req.user.id;
     const counts = {};
     let totalScans = 0;
     let issuesFound = 0;
@@ -153,18 +223,27 @@ router.get('/features/counts', async (req, res) => {
     };
 
     for (const { route, table } of featureMappings) {
-      const result = await pool.query(`SELECT COUNT(*) as count FROM ${table}`);
+      const result = await pool.query(
+        `SELECT COUNT(*) as count FROM ${table} WHERE user_id = $1`,
+        [userId]
+      );
       const count = parseInt(result.rows[0].count, 10);
       const frontendSlug = slugToFrontend[route] || route;
       counts[frontendSlug] = count;
       totalScans += count;
 
-      // Count items with issues (non-completed status)
-      const failedResult = await pool.query(`SELECT COUNT(*) as count FROM ${table} WHERE status = 'failed' OR status = 'pending'`);
+      // Count items with issues (non-completed status) for this user
+      const failedResult = await pool.query(
+        `SELECT COUNT(*) as count FROM ${table} WHERE user_id = $1 AND (status = 'failed' OR status = 'pending')`,
+        [userId]
+      );
       issuesFound += parseInt(failedResult.rows[0].count, 10);
 
-      // Average scores from ai_result
-      const scoreResult = await pool.query(`SELECT ai_result->>'score' as score FROM ${table} WHERE ai_result IS NOT NULL AND ai_result->>'score' IS NOT NULL`);
+      // Average scores from ai_result for this user
+      const scoreResult = await pool.query(
+        `SELECT ai_result->>'score' as score FROM ${table} WHERE user_id = $1 AND ai_result IS NOT NULL AND ai_result->>'score' IS NOT NULL`,
+        [userId]
+      );
       scoreResult.rows.forEach(row => {
         const s = parseFloat(row.score);
         if (!isNaN(s)) {
@@ -174,12 +253,26 @@ router.get('/features/counts', async (req, res) => {
       });
     }
 
+    // Also aggregate overall_score from website_scans ai_result for the user
+    const auditScoreResult = await pool.query(
+      `SELECT ai_result->>'overall_score' as overall_score FROM website_scans WHERE user_id = $1 AND ai_result IS NOT NULL AND ai_result->>'overall_score' IS NOT NULL`,
+      [userId]
+    );
+    auditScoreResult.rows.forEach(row => {
+      const s = parseFloat(row.overall_score);
+      if (!isNaN(s)) {
+        totalScore += s;
+        scoreCount++;
+      }
+    });
+
     res.json({
       counts,
       stats: {
         totalScans,
         issuesFound,
-        complianceScore: scoreCount > 0 ? Math.round(totalScore / scoreCount) : 78,
+        // Use computed average; fall back to null (no fake hardcoded value)
+        complianceScore: scoreCount > 0 ? Math.round(totalScore / scoreCount) : null,
       },
     });
   } catch (err) {
@@ -190,7 +283,7 @@ router.get('/features/counts', async (req, res) => {
 
 // Register all feature routes
 featureMappings.forEach(({ route, table }) => {
-  router.use(`/${route}`, createFeatureRoutes(table, route));
+  router.use(`/${route}`, createFeatureRoutes(table));
 });
 
 module.exports = router;

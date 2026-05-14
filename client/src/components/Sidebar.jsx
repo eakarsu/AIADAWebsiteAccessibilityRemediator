@@ -4,8 +4,27 @@ import {
   FiShield, FiGrid, FiLogOut, FiSearch, FiCheckCircle,
   FiImage, FiSliders, FiMonitor, FiNavigation, FiTag,
   FiFileText, FiClipboard, FiAlertTriangle, FiFile,
-  FiList, FiVideo, FiBookOpen, FiLock, FiCpu, FiMenu, FiX
+  FiList, FiVideo, FiBookOpen, FiLock, FiCpu, FiMenu, FiX,
+  FiClock, FiShare2, FiGitBranch, FiUsers, FiUser, FiBook
 } from 'react-icons/fi';
+
+const advancedItems = [
+  { slug: 'batch-jobs', title: 'Batch Analysis Jobs', icon: FiClock, path: '/advanced/batch-jobs' },
+  { slug: 'comparisons', title: 'Comparison Reports', icon: FiCheckCircle, path: '/advanced/comparisons' },
+  { slug: 'remediation-code', title: 'Auto-Remediation Code', icon: FiCpu, path: '/advanced/remediation-code' },
+  { slug: 'legal-risk', title: 'Legal Risk Dashboard', icon: FiAlertTriangle, path: '/advanced/legal-risk' },
+  { slug: 'invitations', title: 'Auditor Invitations', icon: FiShare2, path: '/advanced/invitations' },
+  { slug: 'ci-webhook', title: 'CI/CD Webhook', icon: FiGitBranch, path: '/advanced/ci-webhook' },
+  { slug: 'skills', title: 'Skill Matrix', icon: FiUsers, path: '/advanced/skills' },
+  { slug: 'portfolio', title: 'Portfolio Scorecard', icon: FiGrid, path: '/advanced/portfolio' },
+  { slug: 'wcag-kb', title: 'WCAG Knowledge Base', icon: FiBook, path: '/advanced/wcag-kb' },
+  { slug: 'validate-fix', title: 'Validate Remediation Fix', icon: FiCheckCircle, path: '/advanced/validate-fix' },
+  { slug: 'bulk-remediate', title: 'Bulk Remediation', icon: FiCpu, path: '/advanced/bulk-remediate' },
+  { slug: 'ab-test-fix', title: 'A/B Test Fixes', icon: FiGitBranch, path: '/advanced/ab-test-fix' },
+  { slug: 'profile', title: 'My Profile', icon: FiUser, path: '/advanced/profile' },
+];
+
+export { advancedItems };
 import { useState } from 'react';
 
 const features = [
@@ -125,6 +144,21 @@ export default function Sidebar() {
                 ))}
               </div>
             )}
+          </div>
+
+          <div className="sidebar-section">
+            <h3 className="sidebar-section-title">Advanced Tools (NEW)</h3>
+            {advancedItems.map((item) => (
+              <NavLink
+                key={item.slug}
+                to={item.path}
+                className="sidebar-link"
+                onClick={closeMobile}
+              >
+                <item.icon size={16} />
+                <span>{item.title}</span>
+              </NavLink>
+            ))}
           </div>
         </nav>
 

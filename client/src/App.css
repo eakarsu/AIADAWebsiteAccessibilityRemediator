@@ -1449,3 +1449,49 @@
     font-size: 1.25rem;
   }
 }
+
+/* ============================
+   JsonView component styles
+   ============================ */
+.json-pre {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 12px;
+  margin: 4px 0;
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: auto;
+}
+.json-string { color: #047857; }
+.json-number { color: #1d4ed8; font-weight: 600; }
+.json-null, .json-empty { color: #94a3b8; font-style: italic; }
+.json-bool { padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 600; }
+.json-bool-true { background: #d1fae5; color: #065f46; }
+.json-bool-false { background: #fee2e2; color: #991b1b; }
+.json-prop { padding: 4px 0; display: flex; gap: 8px; align-items: flex-start; flex-wrap: wrap; }
+.json-key { font-weight: 600; color: #0f172a; min-width: 140px; }
+.json-value { flex: 1; min-width: 0; }
+.json-array-item { padding: 4px 0; display: flex; gap: 8px; align-items: flex-start; }
+.json-index { font-weight: 600; color: #6366f1; font-family: monospace; }
+.json-object { padding: 4px 0; }
+.json-array { padding-left: 12px; border-left: 2px solid #e2e8f0; }
+
+/* Modal large variant */
+.modal--large {
+  max-width: 900px;
+  width: 90vw;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* Spin */
+.spin {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

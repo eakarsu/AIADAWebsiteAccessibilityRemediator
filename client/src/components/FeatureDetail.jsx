@@ -4,10 +4,12 @@ import api from '../api/axios';
 import { getApiPath, getAiFeature } from '../api/slugMap';
 import { features } from './Sidebar';
 import AIResultDisplay from './AIResultDisplay';
+import QuickScanModal from './QuickScanModal';
 import toast from 'react-hot-toast';
 import {
   FiArrowLeft, FiTrash2, FiEdit2, FiCpu, FiSave, FiX,
-  FiExternalLink, FiClock, FiGlobe
+  FiExternalLink, FiClock, FiGlobe, FiDownload, FiZap,
+  FiTrendingUp
 } from 'react-icons/fi';
 
 export default function FeatureDetail() {
@@ -20,12 +22,15 @@ export default function FeatureDetail() {
   const [analyzing, setAnalyzing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [scoreHistory, setScoreHistory] = useState([]);
+  const [quickScanOpen, setQuickScanOpen] = useState(false);
 
   const feature = features.find((f) => f.slug === featureSlug);
   const apiPath = `/${getApiPath(featureSlug)}`;
 
   useEffect(() => {
     loadItem();
+    loadScoreHistory();
   }, [featureSlug, id]);
 
   const loadItem = async () => {
@@ -45,6 +50,16 @@ export default function FeatureDetail() {
     }
   };
 
+  const loadScoreHistory = async () => {
+    try {
+      const apiRoute = getApiPath(featureSlug);
+      const res = await api.get(`/score-history/${apiRoute}/${id}`);
+      setScoreHistory(res.data.data || []);
+    } catch {
+      // Score history is optional
+    }
+  };
+
   const handleDelete = async () => {
     setDeleting(true);
     try {
@@ -60,6 +75,10 @@ export default function FeatureDetail() {
   };
 
   const handleSave = async () => {
+    if (!editForm.title.trim()) {
+      toast.error('Title is required');
+      return;
+    }
     try {
       const res = await api.put(`${apiPath}/${id}`, editForm);
       const updated = res.data.item || res.data;
@@ -76,16 +95,38 @@ export default function FeatureDetail() {
     try {
       const aiFeature = getAiFeature(featureSlug);
       const res = await api.post(`/ai/${aiFeature}`, {
-        prompt: `Analyze the following: Title: ${item.title}. URL: ${item.url}. Description: ${item.description || 'N/A'}`,
+        prompt: `Analyze the following for accessibility compliance:\n\nTitle: ${item.title}\nURL: ${item.url || 'N/A'}\nDescription: ${item.description || 'N/A'}\n\nProvide a thorough WCAG 2.1 analysis with specific issues, severity ratings, WCAG criteria references, and actionable recommendations.`,
         itemId: id,
       });
       const aiResult = res.data.ai_result || res.data.result || res.data;
       setItem((prev) => ({ ...prev, ai_result: aiResult, status: 'completed' }));
+      // Reload score history to include the new score
+      await loadScoreHistory();
       toast.success('AI analysis complete!');
     } catch (err) {
       toast.error(err.response?.data?.message || 'AI analysis failed');
     } finally {
       setAnalyzing(false);
+    }
+  };
+
+  const handleExport = async (format = 'csv') => {
+    try {
+      const apiRoute = getApiPath(featureSlug);
+      const response = await api.get(`/export/${apiRoute}/${id}`, {
+        params: { format },
+        responseType: 'blob',
+      });
+      const mimeType = format === 'csv' ? 'text/csv' : 'application/json';
+      const blob = new Blob([response.data], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${featureSlug}-${id}-report.${format}`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      toast.error('Export failed');
     }
   };
 
@@ -104,6 +145,7 @@ export default function FeatureDetail() {
 
   const Icon = feature?.icon || FiGlobe;
   const statusClass = `status--${item.status || 'pending'}`;
+  const aiResult = item.ai_result || item.aiResult;
 
   return (
     <div className="feature-detail">
@@ -128,6 +170,15 @@ export default function FeatureDetail() {
             <span className={`status-badge ${statusClass}`}>
               {item.status || 'pending'}
             </span>
+            {typeof aiResult?.overall_score === 'number' && (
+              <span className="score-pill" style={{
+                background: aiResult.overall_score >= 80 ? '#f0fff4' : aiResult.overall_score >= 60 ? '#fffff0' : '#fff5f5',
+                color: aiResult.overall_score >= 80 ? '#276749' : aiResult.overall_score >= 60 ? '#744210' : '#c53030',
+                padding: '2px 10px', borderRadius: 4, fontWeight: 700, fontSize: 14, marginLeft: 8,
+              }}>
+                Score: {aiResult.overall_score}/100
+              </span>
+            )}
           </div>
           <div className="detail-actions">
             {editing ? (
@@ -141,6 +192,14 @@ export default function FeatureDetail() {
               </>
             ) : (
               <>
+                <button className="btn btn-ghost btn-sm" title="Quick HTML Scan" onClick={() => setQuickScanOpen(true)}>
+                  <FiZap size={16} /> Quick Scan
+                </button>
+                {aiResult && (
+                  <button className="btn btn-ghost btn-sm" title="Export CSV" onClick={() => handleExport('csv')}>
+                    <FiDownload size={16} /> Export
+                  </button>
+                )}
                 <button className="btn btn-secondary btn-sm" onClick={() => setEditing(true)}>
                   <FiEdit2 size={16} /> Edit
                 </button>
@@ -164,11 +223,16 @@ export default function FeatureDetail() {
                   className="detail-input"
                   value={editForm.url}
                   onChange={(e) => setEditForm({ ...editForm, url: e.target.value })}
+                  placeholder="https://example.com"
                 />
               ) : (
-                <a href={item.url} target="_blank" rel="noopener noreferrer" className="detail-url">
-                  {item.url} <FiExternalLink size={14} />
-                </a>
+                item.url ? (
+                  <a href={item.url} target="_blank" rel="noopener noreferrer" className="detail-url">
+                    {item.url} <FiExternalLink size={14} />
+                  </a>
+                ) : (
+                  <span className="text-muted">No URL</span>
+                )
               )}
             </div>
             <div className="detail-meta-item">
@@ -193,6 +257,26 @@ export default function FeatureDetail() {
             )}
           </div>
 
+          {scoreHistory.length > 1 && (
+            <div className="score-history-section" style={{ marginTop: 20 }}>
+              <h3><FiTrendingUp size={18} /> Score History ({scoreHistory.length} runs)</h3>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                {scoreHistory.map((entry, i) => (
+                  <div key={i} style={{
+                    padding: '4px 10px',
+                    borderRadius: 4,
+                    background: entry.score >= 80 ? '#f0fff4' : entry.score >= 60 ? '#fffff0' : '#fff5f5',
+                    color: entry.score >= 80 ? '#276749' : entry.score >= 60 ? '#744210' : '#c53030',
+                    fontSize: 13,
+                    fontWeight: 700,
+                  }}>
+                    {new Date(entry.recorded_at).toLocaleDateString()}: {entry.score}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="detail-ai-section">
             <div className="detail-ai-header">
               <h3><FiCpu size={18} /> AI Analysis</h3>
@@ -213,8 +297,17 @@ export default function FeatureDetail() {
               </div>
             )}
 
-            {item.aiResult && <AIResultDisplay result={item.aiResult} />}
-            {item.ai_result && !item.aiResult && <AIResultDisplay result={item.ai_result} />}
+            {aiResult ? (
+              <AIResultDisplay result={aiResult} />
+            ) : (
+              <div className="ai-empty-state" style={{
+                padding: '32px', textAlign: 'center', color: 'var(--text-muted)',
+                border: '2px dashed var(--border-color)', borderRadius: 8, marginTop: 16,
+              }}>
+                <FiCpu size={32} style={{ marginBottom: 8, opacity: 0.4 }} />
+                <p>No AI analysis yet. Click "Run AI Analysis" to get started.</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -234,6 +327,10 @@ export default function FeatureDetail() {
             </div>
           </div>
         </div>
+      )}
+
+      {quickScanOpen && (
+        <QuickScanModal onClose={() => setQuickScanOpen(false)} />
       )}
     </div>
   );

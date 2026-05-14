@@ -18,6 +18,21 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Email and password are required.' });
     }
 
+    // Validate email format
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: 'Invalid email format.' });
+    }
+
+    // Validate password strength
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters.' });
+    }
+
+    // Validate name length
+    if (name && name.length > 255) {
+      return res.status(400).json({ error: 'Name must be 255 characters or fewer.' });
+    }
+
     // Check if user already exists
     const existingUser = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
     if (existingUser.rows.length > 0) {
@@ -63,6 +78,10 @@ router.post('/login', async (req, res) => {
 
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password are required.' });
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: 'Invalid email format.' });
     }
 
     // Find user

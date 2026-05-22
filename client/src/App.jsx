@@ -19,12 +19,22 @@ import WcagKnowledgeBasePage from './components/advanced/WcagKnowledgeBasePage';
 import ValidateFixPage from './components/advanced/ValidateFixPage';
 import BulkRemediatePage from './components/advanced/BulkRemediatePage';
 import ABTestFixPage from './components/advanced/ABTestFixPage';
+import RemediationEvidencePack from './pages/RemediationEvidencePack';
+
+import CodexCustomVizFeature from './pages/CodexCustomVizFeature';
+import CodexOperationsFeature from './pages/CodexOperationsFeature';
+
+import TimelineView from './pages/TimelineView';
 
 export default function App() {
   const { isAuthenticated } = useAuth();
 
   return (
     <Routes>
+        <Route path="/insights/timeline" element={<ProtectedRoute><TimelineView /></ProtectedRoute>} />
+        <Route path="/codex/custom-viz" element={<CodexCustomVizFeature />} />
+        <Route path="/codex/operations" element={<CodexOperationsFeature />} />
+
       <Route
         path="/"
         element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />}
@@ -54,6 +64,7 @@ export default function App() {
         <Route path="/advanced/validate-fix" element={<ValidateFixPage />} />
         <Route path="/advanced/bulk-remediate" element={<BulkRemediatePage />} />
         <Route path="/advanced/ab-test-fix" element={<ABTestFixPage />} />
+        <Route path="/advanced/remediation-evidence-pack" element={<RemediationEvidencePack />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

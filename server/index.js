@@ -4,7 +4,7 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
+const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 const { initDb, pool } = require('./db');
 
 const authRoutes = require('./routes/auth');
@@ -72,7 +72,7 @@ const aiRateLimiter = rateLimit({
   max: 20,
   keyGenerator: (req) => {
     // Use user ID from JWT (set by auth middleware) — avoids IPv6 issues since it's a number string
-    return req.user ? `user_${req.user.id}` : `ip_${req.ip}`;
+    return req.user ? `user_${req.user.id}` : `ip_${ipKeyGenerator(req.ip)}`;
   },
   message: { error: 'Too many AI requests. Limit is 20 per hour per user. Please try again later.' },
   standardHeaders: true,
@@ -387,6 +387,8 @@ app.get('/api/score-history/:feature/:id', auth, async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch score history.' });
   }
 });
+
+app.use('/api/remediation-evidence-pack', require('./routes/remediationEvidencePack'));
 
 // 404 handler
 app.use((req, res) => {

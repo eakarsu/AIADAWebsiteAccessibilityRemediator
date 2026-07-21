@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
-import { FiShield, FiMail, FiLock, FiLogIn, FiZap } from 'react-icons/fi';
+import { FiShield, FiMail, FiLock, FiLogIn } from 'react-icons/fi';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -15,12 +15,6 @@ export default function LoginPage() {
     navigate('/dashboard', { replace: true });
     return null;
   }
-
-  const handleAutoFill = () => {
-    setEmail('admin@ada-remediator.com');
-    setPassword('Admin123!');
-    toast.success('Demo credentials filled!');
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -87,10 +81,6 @@ export default function LoginPage() {
             {isLoading ? 'Signing in...' : 'Sign In'}
           </button>
 
-          <button type="button" className="btn btn-outline auto-fill-btn" onClick={handleAutoFill}>
-            <FiZap size={18} />
-            Auto-Fill Demo Credentials
-          </button>
         </form>
 
         <div className="login-footer">

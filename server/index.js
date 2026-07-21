@@ -5,7 +5,8 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
-const { initDb, pool } = require('./db');
+const { pool } = require('./db');
+const { legacyPrototypeRoutesEnabled } = require('./config/runtime').validateRuntime();
 
 const authRoutes = require('./routes/auth');
 const featureRoutes = require('./routes/features');
@@ -19,10 +20,6 @@ const PORT = process.env.BACKEND_PORT || 3001;
 // Validate API key at startup
 if (!process.env.OPENROUTER_API_KEY) {
   console.error('OPENROUTER_API_KEY not set - AI features disabled');
-}
-
-if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'default_jwt_secret_change_me') {
-  console.warn('WARNING: JWT_SECRET is not set or is using the default value. Set a strong secret in .env for production.');
 }
 
 // Security headers
@@ -87,6 +84,12 @@ app.get('/api/health', (req, res) => {
 
 // Apply general limiter to all API routes
 app.use('/api', generalLimiter);
+
+app.use('/api', (req, res, next) => {
+  const supported = ['/auth', '/health', '/remediation-workflows'];
+  if (legacyPrototypeRoutesEnabled || supported.some((prefix) => req.path === prefix || req.path.startsWith(`${prefix}/`))) return next();
+  return res.status(410).json({ error: 'Legacy prototype route is quarantined', code: 'prototype_route_quarantined' });
+});
 
 // Routes
 app.use('/api/auth', authRateLimiter, authRoutes);
@@ -389,6 +392,7 @@ app.get('/api/score-history/:feature/:id', auth, async (req, res) => {
 });
 
 app.use('/api/remediation-evidence-pack', require('./routes/remediationEvidencePack'));
+app.use('/api/remediation-workflows', require('./routes/remediationWorkflow'));
 
 // 404 handler
 app.use((req, res) => {
@@ -410,33 +414,6 @@ function parseAIJson(text) {
   return null;
 }
 
-// Initialize database and start server
-async function start() {
-  try {
-    await initDb();
-    app.listen(PORT, () => {
-      console.log(`Server running on http://localhost:${PORT}`);
-    });
-  } catch (err) {
-    console.error('Failed to start server:', err.message);
-    process.exit(1);
-  }
-}
+app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
 
-start();
-
-// BATCH_00_AUDIT_MOUNTS
-app.use('/api/html-rewriter', require('./routes/htmlRewriter'));
-app.use('/api/browser-extension', require('./routes/browserExtension'));
-app.use('/api/design-plugin', require('./routes/designPlugin'));
-app.use('/api/vpat-generator', require('./routes/vpatGenerator'));
-
-// === Batch 00 Gaps & Frontend Mounts ===
-app.use('/api/gap-ai-fix-validation-step-before', require('./routes/gap_ai_fix_validation_step_before'));
-app.use('/api/gap-ai-rollback-suggestion-when-fix', require('./routes/gap_ai_rollback_suggestion_when_fix'));
-app.use('/api/gap-ai-batch-fix-prioritization', require('./routes/gap_ai_batch_fix_prioritization'));
-app.use('/api/gap-bulk-site-wide-remediation-workflow', require('./routes/gap_bulk_site_wide_remediation_workflow'));
-app.use('/api/gap-b-testing-fixed-vs-original', require('./routes/gap_b_testing_fixed_vs_original'));
-app.use('/api/gap-notifications-subsystem', require('./routes/gap_notifications_subsystem'));
-app.use('/api/gap-vpat-accessibility-statement-generation', require('./routes/gap_vpat_accessibility_statement_generation'));
-app.use('/api/gap-reporting-dashboard-module', require('./routes/gap_reporting_dashboard_module'));
+// Batch-generated stub and gap routes are intentionally not mounted as product APIs.

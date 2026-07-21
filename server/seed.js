@@ -2,6 +2,10 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
+const demoPassword = process.env.DEMO_PASSWORD;
+if (process.env.CONFIRM_DEMO_SEED !== 'YES' || process.env.NODE_ENV === 'production' || !demoPassword || demoPassword.length < 12) {
+  throw new Error('Demo seed requires CONFIRM_DEMO_SEED=YES, non-production NODE_ENV, and DEMO_PASSWORD of at least 12 characters');
+}
 
 const pool = new Pool(
   process.env.DATABASE_URL
@@ -10,7 +14,7 @@ const pool = new Pool(
         host: process.env.DB_HOST || 'localhost',
         port: process.env.DB_PORT || 5432,
         user: process.env.DB_USER || 'postgres',
-        password: process.env.DB_PASSWORD || 'postgres',
+        password: process.env.DB_PASSWORD,
         database: process.env.DB_NAME || 'aiada_accessibility',
       }
 );
@@ -3030,7 +3034,7 @@ async function seed() {
 
     // Seed demo user
     console.log('Creating demo user...');
-    const hashedPassword = await bcrypt.hash('Admin123!', 10);
+    const hashedPassword = await bcrypt.hash(demoPassword, 10);
     await client.query(
       'INSERT INTO users (email, password, name) VALUES ($1, $2, $3)',
       ['admin@ada-remediator.com', hashedPassword, 'ADA Admin']

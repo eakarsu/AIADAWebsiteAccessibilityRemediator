@@ -1,12 +1,13 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { randomUUID } = require('crypto');
 const { pool } = require('../db');
 const auth = require('../middleware/auth');
 
 const router = express.Router();
 
-const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret_change_me';
+const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 
 // POST /api/auth/register
@@ -45,14 +46,15 @@ router.post('/register', async (req, res) => {
 
     // Create user
     const result = await pool.query(
-      'INSERT INTO users (email, password, name) VALUES ($1, $2, $3) RETURNING id, email, name, created_at',
-      [email, hashedPassword, name || null]
+      `INSERT INTO users (email, password, name, role, tenant_id)
+       VALUES ($1, $2, $3, 'admin', $4) RETURNING id, email, name, role, tenant_id, created_at`,
+      [email, hashedPassword, name || null, randomUUID()]
     );
 
     const user = result.rows[0];
 
     // Generate token
-    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, {
+    const token = jwt.sign({ id: user.id, email: user.email, role: user.role, tenantId: user.tenant_id }, JWT_SECRET, {
       expiresIn: JWT_EXPIRES_IN,
     });
 
@@ -99,7 +101,7 @@ router.post('/login', async (req, res) => {
     }
 
     // Generate token
-    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, {
+    const token = jwt.sign({ id: user.id, email: user.email, role: user.role || 'auditor', tenantId: user.tenant_id }, JWT_SECRET, {
       expiresIn: JWT_EXPIRES_IN,
     });
 

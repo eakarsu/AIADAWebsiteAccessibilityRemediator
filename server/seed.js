@@ -3086,7 +3086,7 @@ async function seed() {
     console.log('\n========================================');
     console.log('Database seeded successfully!');
     console.log('========================================');
-    console.log(`Demo user: admin@ada-remediator.com / Admin123!`);
+    console.log('Demo login users provisioned from the local environment.');
     console.log(`Tables seeded: ${tables.length}`);
     console.log(`Total records: ${tables.reduce((sum, t) => sum + t.data.length, 0) + 1}`);
     console.log('========================================\n');

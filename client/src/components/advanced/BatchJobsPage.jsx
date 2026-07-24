@@ -25,7 +25,7 @@ export default function BatchJobsPage() {
       setJobs(r.data.data || []);
       setTotalPages(r.data.pagination?.totalPages || 1);
       setTotal(r.data.pagination?.total || 0);
-    } catch (e) {
+    } catch {
       toast.error('Failed to load batch jobs');
     } finally {
       setLoading(false);
@@ -71,7 +71,7 @@ export default function BatchJobsPage() {
       const r = await getBatchJob(id);
       setSelected(r.data);
       setJobs((prev) => prev.map((j) => (j.id === id ? r.data : j)));
-    } catch (e) {
+    } catch {
       toast.error('Failed to refresh');
     }
   };

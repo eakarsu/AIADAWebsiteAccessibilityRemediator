@@ -80,7 +80,7 @@ export default function WcagKnowledgeBasePage() {
       setItems(r.data.data || []);
       setTotalPages(r.data.pagination?.totalPages || 1);
       setTotal(r.data.pagination?.total || 0);
-    } catch (err) {
+    } catch {
       toast.error('Failed to load knowledge base');
     } finally {
       setLoading(false);

@@ -16,7 +16,7 @@ export default function PortfolioPage() {
     try {
       const r = await getPortfolio();
       setData(r.data);
-    } catch (e) {
+    } catch {
       toast.error('Failed');
     } finally {
       setLoading(false);

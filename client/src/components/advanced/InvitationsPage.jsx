@@ -17,7 +17,7 @@ export default function InvitationsPage() {
     try {
       const r = await listInvites({ page: 1, limit: 50 });
       setItems(r.data.data || []);
-    } catch (e) {
+    } catch {
       toast.error('Failed to load');
     } finally {
       setLoading(false);

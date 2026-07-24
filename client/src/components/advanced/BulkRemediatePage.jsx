@@ -30,7 +30,7 @@ export default function BulkRemediatePage() {
     let issues;
     try {
       issues = JSON.parse(issuesJson);
-    } catch (err) {
+    } catch {
       toast.error('Issues must be valid JSON array.');
       setLoading(false);
       return;

@@ -125,7 +125,7 @@ export default function FeatureDetail() {
       a.download = `${featureSlug}-${id}-report.${format}`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch (err) {
+    } catch {
       toast.error('Export failed');
     }
   };

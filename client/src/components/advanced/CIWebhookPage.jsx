@@ -16,7 +16,7 @@ export default function CIWebhookPage() {
     try {
       const r = await listWebhookResults({ page: 1, limit: 50 });
       setResults(r.data.data || []);
-    } catch (e) {
+    } catch {
       toast.error('Failed to load');
     } finally {
       setLoading(false);

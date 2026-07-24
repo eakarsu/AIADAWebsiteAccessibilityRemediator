@@ -18,7 +18,7 @@ export default function SkillMatrixPage() {
     try {
       const r = await listSkills({ page: 1, limit: 100 });
       setItems(r.data.data || []);
-    } catch (e) {
+    } catch {
       toast.error('Failed to load');
     } finally {
       setLoading(false);
@@ -76,7 +76,7 @@ export default function SkillMatrixPage() {
     try {
       const r = await suggestSkills();
       setSuggestions(r.data.result);
-    } catch (err) {
+    } catch {
       toast.error('Failed');
     } finally {
       setSuggestLoading(false);

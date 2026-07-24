@@ -79,7 +79,7 @@ export default function FeaturePage() {
       a.download = `${featureSlug}-${item.id}-report.csv`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch (err) {
+    } catch {
       toast.error('Export failed');
     }
   };

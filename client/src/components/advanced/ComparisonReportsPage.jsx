@@ -22,7 +22,7 @@ export default function ComparisonReportsPage() {
       setItems(r.data.data || []);
       setTotalPages(r.data.pagination?.totalPages || 1);
       setTotal(r.data.pagination?.total || 0);
-    } catch (e) {
+    } catch {
       toast.error('Failed to load');
     } finally {
       setLoading(false);

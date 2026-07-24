@@ -8,7 +8,10 @@ const auth = require('../middleware/auth');
 const router = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET;
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+const configuredExpiry = process.env.JWT_EXPIRES_IN || '';
+const JWT_EXPIRES_IN = /^(?:\d+|\d+(?:ms|s|m|h|d|w|y))$/i.test(configuredExpiry)
+  ? configuredExpiry
+  : '7d';
 
 // POST /api/auth/register
 router.post('/register', async (req, res) => {

@@ -2,10 +2,8 @@ import { useEffect, useState } from 'react';
 import { FiUser, FiLock, FiSave, FiLoader, FiShield } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { getProfile, updateProfile, changePassword } from '../../api/advanced';
-import { useAuth } from '../../context/AuthContext';
 
 export default function UserProfilePage() {
-  const { user: authUser } = useAuth();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -20,7 +18,7 @@ export default function UserProfilePage() {
       const r = await getProfile();
       setProfile(r.data.user);
       setProfileForm({ name: r.data.user.name || '', organization: r.data.user.organization || '' });
-    } catch (err) {
+    } catch {
       toast.error('Failed to load profile');
     } finally {
       setLoading(false);

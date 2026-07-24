@@ -86,13 +86,14 @@ app.get('/api/health', (req, res) => {
 app.use('/api', generalLimiter);
 
 app.use('/api', (req, res, next) => {
-  const supported = ['/auth', '/health', '/remediation-workflows'];
+  const supported = ['/auth', '/health', '/remediation-workflows', '/runtime-ai'];
   if (legacyPrototypeRoutesEnabled || supported.some((prefix) => req.path === prefix || req.path.startsWith(`${prefix}/`))) return next();
   return res.status(410).json({ error: 'Legacy prototype route is quarantined', code: 'prototype_route_quarantined' });
 });
 
 // Routes
 app.use('/api/auth', authRateLimiter, authRoutes);
+app.use('/api/runtime-ai', require('./routes/runtimeAi'));
 app.use('/api', featureRoutes);
 
 // Apply auth then rate limiter before AI routes
